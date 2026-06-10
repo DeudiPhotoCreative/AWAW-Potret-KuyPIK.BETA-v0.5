@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galeri Klien - Seleksi & Download</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Modern Dark UI & Glassmorphism */
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-image: radial-gradient(circle at top right, #1e293b, #0f172a);
+            min-height: 100vh;
+        }
+
+        .padding-bottom-footer {
+            padding-bottom: 100px;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-footer {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .neon-text {
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+            color: #38bdf8;
+        }
+
+        .btn-neon {
+            background: #0ea5e9;
+            box-shadow: 0 0 15px rgba(14, 165, 233, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .btn-neon:hover {
+            box-shadow: 0 0 25px rgba(14, 165, 233, 0.7);
+            transform: translateY(-2px);
+        }
+
+        .btn-landing {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-landing-green {
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .btn-landing-green:hover {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.8);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(34, 197, 94, 0.1);
+        }
+
+        .btn-landing-blue {
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-landing-blue:hover {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.8);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.1);
+        }
+
+        .photo-card {
+            position: relative;
+            cursor: pointer;
+            overflow: hidden;
+            border-radius: 0.75rem;
+            transition: all 0.2s ease-in-out;
+            border: 2px solid transparent;
+            aspect-ratio: 2/3;
+            background-color: #1e293b;
+        }
+
+        .photo-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .photo-card:hover img {
+            transform: scale(1.05);
+        }
+
+        .photo-card.selected {
+            border-color: #38bdf8;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+
+        .photo-card.selected img {
+            opacity: 0.7;
+            transform: scale(1.05);
+        }
+
+        .check-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+            background: #38bdf8;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.2s ease;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .photo-card.selected .check-badge {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .download-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .photo-card:hover .download-overlay {
+            opacity: 1;
+        }
+
+        .progress-bar-fill {
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #38bdf8;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="loader" class="fixed inset-0 bg-[#0f172a] z-50 flex flex-col justify-center items-center">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-[#38bdf8] mb-4"></div>
+        <h2 class="text-xl font-bold text-white neon-text animate-pulse">Memuat Data...</h2>
+        <p class="text-gray-400 text-sm mt-2">Mengambil akses dari server</p>
+    </div>
+
+    <div id="errorScreen"
+        class="hidden fixed inset-0 bg-[#0f172a] z-50 flex-col justify-center items-center text-center p-6">
+        <div class="text-6xl mb-4">🔒</div>
+        <h2 class="text-2xl font-bold text-white mb-2" id="errorTitle">Akses Ditolak</h2>
+        <p class="text-gray-400" id="errorDesc">Link tidak valid atau sudah kedaluwarsa.</p>
+    </div>
+
+    <div id="landingScreen"
+        class="hidden fixed inset-0 bg-[#0f172a] z-40 flex-col justify-center items-center p-6 text-center overflow-y-auto">
+        <div class="mb-4 relative">
+            <div class="text-6xl">📸</div>
+            <div class="text-2xl absolute -top-2 -right-4 animate-pulse">✨</div>
+        </div>
+        <h1 class="text-3xl font-bold text-white mb-1 tracking-wide" id="landingName">Nama Klien</h1>
+        <p class="text-gray-400 mb-10 text-sm">Apa yang ingin Anda lakukan?</p>
+
+        <div class="w-full max-w-sm space-y-4">
+            <button onclick="openGallery('SELECT')"
+                class="btn-landing btn-landing-green w-full p-4 rounded-2xl flex items-center text-left gap-4">
+                <div class="bg-green-500/20 p-3.5 rounded-full text-green-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-white font-bold text-lg">Pilih Foto</h3>
+                    <p class="text-gray-400 text-xs mt-0.5">Pilih foto untuk dikirim ke admin</p>
+                </div>
+            </button>
+            <button onclick="openGallery('DOWNLOAD')"
+                class="btn-landing btn-landing-blue w-full p-4 rounded-2xl flex items-center text-left gap-4">
+                <div class="bg-blue-500/20 p-3.5 rounded-full text-blue-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-white font-bold text-lg">Download Foto</h3>
+                    <p class="text-gray-400 text-xs mt-0.5">Unduh foto ke perangkat Anda</p>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <div id="galleryScreen" class="hidden flex-col min-h-screen">
+        <header class="glass-panel sticky top-0 z-30 px-6 py-4">
+            <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="w-full md:w-auto flex items-center gap-4">
+                    <button onclick="backToLanding()"
+                        class="text-gray-400 hover:text-white transition-colors p-2 bg-white/5 rounded-lg border border-white/10">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                    </button>
+                    <div>
+                        <h1 class="text-xl font-bold neon-text" id="uiNamaSesi">Sesi Foto</h1>
+                        <p class="text-xs text-gray-300" id="uiModeTitle">Mode Seleksi</p>
+                    </div>
+                </div>
+
+                <div id="uiProgressContainer" class="w-full md:w-1/2 flex flex-col gap-2">
+                    <div class="flex justify-between text-sm font-semibold">
+                        <span class="text-gray-300">Progres Seleksi:</span>
+                        <span class="text-[#38bdf8]"><span id="uiCount">0</span> / <span id="uiMax">0</span> Foto</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                        <div id="uiProgressBar"
+                            class="bg-[#38bdf8] h-2.5 rounded-full progress-bar-fill shadow-[0_0_10px_#38bdf8]"
+                            style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div id="uiDownloadSemuaContainer" class="hidden w-full md:w-auto text-right">
+                    <a href="#" id="btnDownloadDrive" target="_blank"
+                        class="w-full inline-block bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2.5 rounded-lg transition-colors shadow-[0_0_15px_rgba(37,99,235,0.4)]">
+                        ⬇️ Download Semua (Drive)
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto p-6 flex-1 w-full">
+            <div id="guideText" class="mb-4 text-gray-400 text-sm italic text-center md:text-left leading-relaxed">
+            </div>
+            <div id="photoGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+            </div>
+        </main>
+
+        <footer id="footerSelection" class="glass-footer fixed bottom-0 left-0 w-full px-6 py-4 z-30">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+                <div class="text-sm">
+                    <span class="text-gray-400 hidden md:inline">Total Terpilih:</span>
+                    <span class="font-bold text-white text-lg md:ml-1" id="uiFooterCount">0</span>
+                </div>
+                <button onclick="toggleReviewModal()" id="btnReview"
+                    class="btn-neon px-6 py-3 rounded-lg font-bold text-white opacity-50 cursor-not-allowed transition-all"
+                    disabled>
+                    Review & Kirim ke Admin
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <div id="modalReview"
+        class="fixed inset-0 bg-black/90 backdrop-blur-md hidden flex-col justify-center items-center z-50 opacity-0 transition-opacity duration-300">
+        <div
+            class="bg-[#0f172a] border border-gray-700 p-6 md:p-8 rounded-xl w-full max-w-3xl relative max-h-[85vh] flex flex-col">
+            <button onclick="toggleReviewModal()"
+                class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl">&times;</button>
+            <h2 class="text-2xl font-bold mb-2 neon-text">Review Pilihan Foto</h2>
+            <p class="text-gray-400 text-sm mb-6">Pastikan foto yang Anda pilih sudah benar sebelum dikirim.</p>
+            <div class="overflow-y-auto flex-1 mb-6 border border-gray-800 rounded-lg p-4 bg-[#151f32]">
+                <ul id="reviewList" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-300"></ul>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-4 mt-auto">
+                <button onclick="toggleReviewModal()"
+                    class="flex-1 py-3 rounded-lg font-semibold text-white bg-gray-700 hover:bg-gray-600 transition-colors">
+                    Kembali Memilih
+                </button>
+                <button onclick="submitToAdmin()"
+                    class="flex-1 btn-neon py-3 rounded-lg font-bold text-white flex justify-center items-center gap-2">
+                    <span>Kirim ke WhatsApp</span>
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path
+                            d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.183-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.765-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.277.042-.615.08-1.743-.388-1.353-.562-2.223-1.934-2.291-2.025-.068-.091-.546-.727-.546-1.386 0-.66.34-1.002.461-1.127.12-.125.26-.156.347-.156.087 0 .174.001.252.004.08.003.187-.03.287.213.1.242.341.83.371.892.031.062.051.134.01.213-.041.08-.061.125-.122.202-.062.077-.13.167-.184.226-.06.066-.123.136-.053.256.07.12 3.125 1.934 3.25 1.979.124.045.197.038.27-.044.073-.082.316-.363.401-.488.085-.125.169-.104.281-.063.111.042.705.332.826.393.12.062.2.093.228.145.029.052.029.3-.115.705z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- KONFIGURASI API ---
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwwpfU_a3Ww12Riv0QndS25DOqtCepKNE4YWnglE1Zv2U7Cq_-RV9C8Y4Oh8cu0RaZe/exec";
+
+        let projectData = null;
+        let allFiles = [];
+        let selectedFiles = [];
+        let maxSelection = 0;
+        let currentMode = null;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectId = urlParams.get('project');
+
+        window.onload = async () => {
+            if (!projectId) {
+                showError("Link Tidak Valid", "Project ID tidak ditemukan pada URL.");
+                return;
+            }
+            try {
+                const response = await fetch(`${GAS_URL}?action=getProjectDetails&projectId=${projectId}`);
+                const result = await response.json();
+
+                if (result.status === "error" || result.status === "locked") {
+                    showError("Akses Ditolak", result.message);
+                    return;
+                }
+                if (result.status === "success") {
+                    projectData = result.project;
+                    allFiles = result.files || [];
+                    maxSelection = parseInt(projectData.max_foto) || 0;
+
+                    // URUTAN FOTO BERURUTAN (Dari Atas ke Bawah secara Alami/Alfanumerik)
+                    allFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+                    document.getElementById('landingName').innerText = projectData.nama_klien;
+                    document.getElementById('uiNamaSesi').innerText = projectData.nama_sesi;
+                    document.getElementById('uiMax').innerText = maxSelection;
+                    document.getElementById('btnDownloadDrive').href = projectData.link_drive;
+
+                    document.getElementById('loader').classList.add('hidden');
+                    document.getElementById('landingScreen').classList.remove('hidden');
+                    document.getElementById('landingScreen').classList.add('flex');
+                }
+            } catch (error) {
+                showError("Koneksi Gagal", "Gagal terhubung ke server. Silakan muat ulang halaman.");
+            }
+        };
+
+        function showError(title, desc) {
+            document.getElementById('loader').classList.add('hidden');
+            const errScreen = document.getElementById('errorScreen');
+            document.getElementById('errorTitle').innerText = title;
+            document.getElementById('errorDesc').innerText = desc;
+            errScreen.classList.remove('hidden');
+            errScreen.classList.add('flex');
+        }
+
+        function openGallery(mode) {
+            currentMode = mode;
+            document.getElementById('landingScreen').classList.add('hidden');
+            document.getElementById('landingScreen').classList.remove('flex');
+            document.getElementById('galleryScreen').classList.remove('hidden');
+            document.getElementById('galleryScreen').classList.add('flex');
+
+            const body = document.body;
+            const progressContainer = document.getElementById('uiProgressContainer');
+            const downloadSemuaContainer = document.getElementById('uiDownloadSemuaContainer');
+            const footer = document.getElementById('footerSelection');
+            const modeTitle = document.getElementById('uiModeTitle');
+
+            if (mode === 'SELECT') {
+                modeTitle.innerText = "Mode Seleksi Foto";
+                progressContainer.classList.remove('hidden');
+                downloadSemuaContainer.classList.add('hidden');
+                footer.classList.remove('hidden');
+                body.classList.add('padding-bottom-footer');
+                updateProgressUI();
+            } else if (mode === 'DOWNLOAD') {
+                modeTitle.innerText = "Mode Download Foto";
+                progressContainer.classList.add('hidden');
+                downloadSemuaContainer.classList.remove('hidden');
+                footer.classList.add('hidden');
+                body.classList.remove('padding-bottom-footer');
+            }
+            renderPhotoGrid();
+        }
+
+        function backToLanding() {
+            document.getElementById('galleryScreen').classList.add('hidden');
+            document.getElementById('galleryScreen').classList.remove('flex');
+            document.getElementById('landingScreen').classList.remove('hidden');
+            document.getElementById('landingScreen').classList.add('flex');
+            document.body.classList.remove('padding-bottom-footer');
+        }
+
+        function renderPhotoGrid() {
+            const grid = document.getElementById('photoGrid');
+            const guideText = document.getElementById('guideText');
+            grid.innerHTML = '';
+
+            if (currentMode === 'SELECT') {
+                guideText.innerHTML = `Klik foto untuk memilih atau membatalkan pilihan. (Maksimal: ${maxSelection}) <br><span class="text-[#38bdf8] font-bold mt-1 inline-block text-sm">📂 Total foto tersedia: ${allFiles.length} file</span>`;
+            } else if (currentMode === 'DOWNLOAD') {
+                guideText.innerHTML = `Klik foto untuk mengunduh secara satuan, atau klik Download Semua. <br><span class="text-[#38bdf8] font-bold mt-1 inline-block text-sm">📂 Total foto tersedia: ${allFiles.length} file</span>`;
+            }
+
+            if (allFiles.length === 0) {
+                grid.innerHTML = `
+                <div class="col-span-full text-center py-10 bg-white/5 rounded-xl border border-white/10 mt-4">
+                    <div class="text-5xl mb-4">📁❌</div>
+                    <p class="text-white font-bold text-xl">Foto tidak ditemukan di folder ini.</p>
+                    <div class="text-gray-400 text-sm mt-4 max-w-lg mx-auto space-y-2 text-left bg-black/30 p-4 rounded-lg">
+                        <p class="font-bold text-sky-400">💡 Peringatan untuk Admin (Vendor):</p>
+                        <p>1. <b>Akses Terkunci:</b> Pastikan pengaturan Share pada folder Google Drive telah diubah menjadi <b>"Siapa saja yang memiliki link (Anyone with the link)"</b>.</p>
+                        <p>2. <b>Format File Salah:</b> Sistem hanya membaca gambar (<b>.JPG</b> atau <b>.PNG</b>). File RAW seperti .CR2 tidak akan muncul.</p>
+                    </div>
+                </div>`;
+                return;
+            }
+
+            allFiles.forEach(file => {
+                const card = document.createElement('div');
+                card.className = 'photo-card';
+                card.id = `card-${file.id}`;
+
+                const safeImgUrl = `https://drive.google.com/thumbnail?id=${file.id}&sz=w800`;
+                const safeDownloadUrl = `https://drive.google.com/uc?export=download&id=${file.id}`;
+                const fallbackImg = `onerror="this.onerror=null; this.src='https://via.placeholder.com/400x600/1e293b/ef4444?text=Gagal+Dimuat+Cek+Akses+Drive';"`;
+
+                if (currentMode === 'SELECT') {
+                    if (selectedFiles.find(f => f.id === file.id)) { card.classList.add('selected'); }
+                    card.onclick = () => toggleSelection(file);
+                    card.innerHTML = `
+                        <img src="${safeImgUrl}" alt="${file.name}" loading="lazy" referrerpolicy="no-referrer" ${fallbackImg} />
+                        <div class="check-badge"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg></div>
+                        <div class="absolute bottom-0 left-0 w-full bg-black/60 backdrop-blur-sm text-xs p-2 text-center text-gray-200 truncate">${file.name}</div>
+                    `;
+                } else if (currentMode === 'DOWNLOAD') {
+                    card.innerHTML = `
+                        <a href="${safeDownloadUrl}" target="_blank" class="block w-full h-full relative">
+                            <img src="${safeImgUrl}" alt="${file.name}" loading="lazy" referrerpolicy="no-referrer" ${fallbackImg} />
+                            <div class="download-overlay">
+                                <div class="bg-blue-600 rounded-full p-3 text-white mb-2 shadow-lg"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></div>
+                                <span class="text-white font-semibold text-sm">Download</span>
+                            </div>
+                            <div class="absolute bottom-0 left-0 w-full bg-black/60 backdrop-blur-sm text-xs p-2 text-center text-gray-200 truncate z-10">${file.name}</div>
+                        </a>
+                    `;
+                }
+                grid.appendChild(card);
+            });
+        }
+
+        function toggleSelection(file) {
+            const index = selectedFiles.findIndex(f => f.id === file.id);
+            const card = document.getElementById(`card-${file.id}`);
+
+            if (index > -1) {
+                selectedFiles.splice(index, 1);
+                card.classList.remove('selected');
+            } else {
+                if (selectedFiles.length >= maxSelection) {
+                    alert(`Maksimal ${maxSelection} foto! Batalkan pilihan lain jika ingin mengganti.`);
+                    return;
+                }
+                selectedFiles.push({ id: file.id, name: file.name });
+                card.classList.add('selected');
+            }
+            updateProgressUI();
+        }
+
+        function updateProgressUI() {
+            if (currentMode !== 'SELECT') return;
+            const count = selectedFiles.length;
+            const percentage = (count / maxSelection) * 100;
+
+            document.getElementById('uiCount').innerText = count;
+            document.getElementById('uiFooterCount').innerText = `${count} / ${maxSelection}`;
+
+            const bar = document.getElementById('uiProgressBar');
+            bar.style.width = `${percentage}%`;
+
+            if (count === maxSelection) {
+                bar.classList.replace('bg-[#38bdf8]', 'bg-[#22c55e]');
+                bar.style.boxShadow = "0 0 10px #22c55e";
+            } else {
+                bar.classList.replace('bg-[#22c55e]', 'bg-[#38bdf8]');
+                bar.style.boxShadow = "0 0 10px #38bdf8";
+            }
+
+            const btnReview = document.getElementById('btnReview');
+            if (count > 0) {
+                btnReview.disabled = false; btnReview.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                btnReview.disabled = true; btnReview.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function toggleReviewModal() {
+            const modal = document.getElementById('modalReview');
+            if (modal.classList.contains('hidden')) {
+                const list = document.getElementById('reviewList');
+                list.innerHTML = '';
+                selectedFiles.forEach((f, i) => {
+                    list.innerHTML += `<li class="bg-black/30 p-2 rounded border border-gray-700 flex items-center gap-2"><span class="text-[#38bdf8] font-bold w-6">${i + 1}.</span> <span class="truncate">${f.name}</span></li>`;
+                });
+                modal.classList.remove('hidden');
+                setTimeout(() => { modal.classList.remove('opacity-0'); }, 10);
+            } else {
+                modal.classList.add('opacity-0');
+                setTimeout(() => { modal.classList.add('hidden'); }, 300);
+            }
+        }
+
+        async function submitToAdmin() {
+            const fileNames = selectedFiles.map(f => f.name).join(', ');
+            const payload = { action: "submitSelection", projectId: projectId, selectedFiles: fileNames };
+
+            try {
+                document.getElementById('btnReview').innerText = "Memproses...";
+
+                // MENGGUNAKAN MODE: NO-CORS AGAR TIDAK TERBLOKIR REDIRECT GOOGLE APPS SCRIPT
+                await fetch(GAS_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "text/plain" },
+                    body: JSON.stringify(payload)
+                });
+
+                const adminWa = projectData.wa_admin;
+                let textWa = `Halo Admin,\n\nSaya *${projectData.nama_klien}*.\nSaya telah selesai memilih *${selectedFiles.length} foto* untuk sesi *${projectData.nama_sesi}*.\n\nBerikut daftar nama file:\n`;
+                selectedFiles.forEach((f, i) => { textWa += `${i + 1}. ${f.name}\n`; });
+                textWa += `\nTerima kasih.`;
+
+                // PERBAIKAN UTAMA: MEMASTIKAN WA_ADMIN DIUBAH MENJADI STRING AGAR TIDAK EROR JIKA BERUPA ANGKA
+                window.open(`https://wa.me/${String(adminWa).replace('+', '')}?text=${encodeURIComponent(textWa)}`, '_blank');
+                alert("Berhasil! Status tersimpan. Anda diarahkan ke WhatsApp.");
+                window.location.reload();
+            } catch (error) {
+                alert("Gagal mengirim data. Pastikan koneksi internet stabil.");
+            }
+        }
+    </script>
+</body>
+
+</html>
